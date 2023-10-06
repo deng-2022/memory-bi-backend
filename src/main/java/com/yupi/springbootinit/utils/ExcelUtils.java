@@ -31,31 +31,32 @@ public class ExcelUtils {
     /**
      * excel 转 csv
      *
-     * @param multipartFile
-     * @return
+     * @param multipartFile 用户上传的Excel文件
+     * @return 表格转换为csv
      */
     public static String excelToCsv(MultipartFile multipartFile) {
-
-        File file = null;
-        try {
-            file = ResourceUtils.getFile("classpath:test_excel.xlsx");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+//        File file = null;
+//        try {
+//            file = ResourceUtils.getFile("classpath:test_excel.xlsx");
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
         // 读取数据
         List<Map<Integer, String>> list = null;
-        list = EasyExcel.read(file)
-                .excelType(ExcelTypeEnum.XLSX)
-                .sheet()
-                .headRowNumber(0)
-                .doReadSync();
+        try {
+            list = EasyExcel.read(multipartFile.getInputStream())
+                    .excelType(ExcelTypeEnum.XLSX)
+                    .sheet()
+                    .headRowNumber(0)
+                    .doReadSync();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         if (CollUtil.isEmpty(list)) {
             return "";
         }
         // 转换为 csv
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("图表名称: " + "图表明\n")
-                .append("分析需求: " + "\n");
         // 读取表头
         LinkedHashMap<Integer, String> headerMap = (LinkedHashMap) list.get(0);
         List<String> headerList = headerMap.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());

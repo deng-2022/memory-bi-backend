@@ -1,7 +1,8 @@
 package com.yupi.springbootinit.mapper;
 
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import generator.domain.Chart;
+import com.yupi.springbootinit.model.entity.Chart;
 
 /**
 * @author Lenovo
