@@ -3,12 +3,17 @@ package com.yupi.springbootinit.utils;
 import cn.hutool.core.collection.CollUtil;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.support.ExcelTypeEnum;
+import com.yupi.yucongming.dev.client.YuCongMingClient;
+import com.yupi.yucongming.dev.common.BaseResponse;
+import com.yupi.yucongming.dev.model.DevChatRequest;
+import com.yupi.yucongming.dev.model.DevChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,6 +35,7 @@ public class ExcelUtils {
      * @return
      */
     public static String excelToCsv(MultipartFile multipartFile) {
+
         File file = null;
         try {
             file = ResourceUtils.getFile("classpath:test_excel.xlsx");
@@ -48,6 +54,8 @@ public class ExcelUtils {
         }
         // 转换为 csv
         StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("图表名称: " + "图表明\n")
+                .append("分析需求: " + "\n");
         // 读取表头
         LinkedHashMap<Integer, String> headerMap = (LinkedHashMap) list.get(0);
         List<String> headerList = headerMap.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());
@@ -59,9 +67,5 @@ public class ExcelUtils {
             stringBuilder.append(StringUtils.join(dataList, ",")).append("\n");
         }
         return stringBuilder.toString();
-    }
-
-    public static void main(String[] args) {
-        excelToCsv(null);
     }
 }

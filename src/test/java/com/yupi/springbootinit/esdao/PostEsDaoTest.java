@@ -3,6 +3,7 @@ package com.yupi.springbootinit.esdao;
 import com.yupi.springbootinit.model.dto.post.PostEsDTO;
 import com.yupi.springbootinit.model.dto.post.PostQueryRequest;
 import com.yupi.springbootinit.model.entity.Post;
+import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.service.PostService;
 import java.util.Arrays;
 import java.util.Date;
@@ -23,6 +24,9 @@ import org.springframework.data.domain.Sort;
  */
 @SpringBootTest
 public class PostEsDaoTest {
+    public static void main(String[] args) {
+        User user = new User();
+    }
 
     @Resource
     private PostEsDao postEsDao;

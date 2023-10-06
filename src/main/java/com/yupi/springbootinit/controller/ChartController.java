@@ -1,21 +1,18 @@
 package com.yupi.springbootinit.controller;
 
 import cn.hutool.core.io.FileUtil;
-import com.yupi.springbootinit.common.BaseResponse;
 import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.common.ResultUtils;
-import com.yupi.springbootinit.constant.FileConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
-import com.yupi.springbootinit.manager.CosManager;
 import com.yupi.springbootinit.model.dto.chart.GenChartByAiRequest;
-import com.yupi.springbootinit.model.dto.file.UploadFileRequest;
-import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.enums.FileUploadBizEnum;
-import com.yupi.springbootinit.service.UserService;
 import com.yupi.springbootinit.utils.ExcelUtils;
+import com.yupi.yucongming.dev.client.YuCongMingClient;
+import com.yupi.yucongming.dev.common.BaseResponse;
+import com.yupi.yucongming.dev.model.DevChatRequest;
+import com.yupi.yucongming.dev.model.DevChatResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
 import java.util.Arrays;
 
 /**
@@ -38,6 +34,9 @@ import java.util.Arrays;
 @RequestMapping("/chart")
 @Slf4j
 public class ChartController {
+    @Resource
+    private YuCongMingClient client;
+
     /**
      * 智能分析
      *
@@ -47,8 +46,16 @@ public class ChartController {
      * @return 生成的图表信息
      */
     @PostMapping("/generate")
-    public BaseResponse<String> uploadFile(@RequestPart("file") MultipartFile multipartFile,
-                                           GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+    public com.yupi.springbootinit.common.BaseResponse<String> uploadFile(@RequestPart("file") MultipartFile multipartFile,
+                                                                          GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+
+        DevChatRequest devChatRequest = new DevChatRequest();
+        devChatRequest.setModelId(1709914748273168386L);
+        devChatRequest.setMessage("我想介绍下我的新游戏，它是一种双人棋牌游戏");
+
+        BaseResponse<DevChatResponse> response = client.doChat(devChatRequest);
+        System.out.println(response.getData());
+
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
@@ -56,7 +63,7 @@ public class ChartController {
         // 校验
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
-
+        // 分析Excel表格
         String result = ExcelUtils.excelToCsv(multipartFile);
         return ResultUtils.success(result);
 
