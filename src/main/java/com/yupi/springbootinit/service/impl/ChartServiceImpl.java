@@ -1,5 +1,6 @@
 package com.yupi.springbootinit.service.impl;
 
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -22,6 +23,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
+import java.util.List;
+
+import static com.yupi.springbootinit.constant.FileConstant.ONE_MB;
+import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX_LIST;
 
 /**
  * @author Lenovo
@@ -88,6 +94,17 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "目标为空");
 
         // 3.分析Excel图表，获取原始数据
+        // 3.1.校验文件
+        // 3.1.1.校验文件大小
+        long size = multipartFile.getSize();
+        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+
+        // 3.1.2.校验文件后缀
+        String originalFilename = multipartFile.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(originalFilename);
+        ThrowUtils.throwIf(!VALID_FILE_SUFFIX_LIST.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
+
+        // 3.2.分析文件，获取csv数据
         String excelToCsv = ExcelUtils.excelToCsv(multipartFile);
         userInput.append("\n")
                 .append("分析需求:").append("\n")
