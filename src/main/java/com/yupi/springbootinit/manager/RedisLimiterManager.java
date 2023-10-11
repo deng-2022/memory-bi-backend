@@ -1,5 +1,10 @@
 package com.yupi.springbootinit.manager;
 
+import com.yupi.springbootinit.common.ErrorCode;
+import com.yupi.springbootinit.exception.ThrowUtils;
+import org.redisson.api.RRateLimiter;
+import org.redisson.api.RateIntervalUnit;
+import org.redisson.api.RateType;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +19,21 @@ import javax.annotation.Resource;
 @Service
 public class RedisLimiterManager {
 
-    // @Resource
-    // private RedissionClient redissionClient;
+    @Resource
+    private RedissonClient redissonClient;
+
+    /**
+     * 限流实现
+     *
+     * @param key 识别用户的key
+     */
+    public void doRateLimit(String key) {
+        // 创建限流器
+        RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
+        rateLimiter.trySetRate(RateType.OVERALL, 2, 1, RateIntervalUnit.SECONDS);
+        // 每当一个操作来了之后，请求一个令牌
+        boolean canOp = rateLimiter.tryAcquire(1);
+        // 超出发放令牌数目，请求过于频繁
+        ThrowUtils.throwIf(!canOp, ErrorCode.TOO_MANY_REQUEST);
+    }
 }

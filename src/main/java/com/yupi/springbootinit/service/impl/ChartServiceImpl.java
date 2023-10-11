@@ -9,6 +9,7 @@ import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.constant.AiConstant;
 import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.manager.AiManager;
+import com.yupi.springbootinit.manager.RedisLimiterManager;
 import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yupi.springbootinit.model.dto.chart.GenChartByAiRequest;
@@ -42,6 +43,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
 
     @Resource
     private AiManager aiManager;
+
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     /**
      * 图表列表
@@ -83,6 +87,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         // 校验登录
         User loginUser = userService.getLoginUser(request);
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "请先登录后再尝试调用接口");
+
+        // 限流(限制用户的调用次数，以用户id为key，区分各个限流器)
+        redisLimiterManager.doRateLimit("genCharByAi_" + loginUser.getId());
 
         // 2.提取图表名信息、分析需求(分析目标 图表类型)，做好参数校验
         StringBuilder userInput = new StringBuilder();

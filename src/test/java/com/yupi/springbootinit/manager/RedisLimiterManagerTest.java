@@ -17,6 +17,8 @@ class RedisLimiterManagerTest {
     @Resource
     private CosManager cosManager;
 
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     @Test
     void putObject() {
@@ -27,7 +29,13 @@ class RedisLimiterManagerTest {
     void doRateLimit() throws InterruptedException {
         String userId = "1";
         for (int i = 0; i < 2; i++) {
-
+            redisLimiterManager.doRateLimit(userId);
+            System.out.println("成功");
+        }
+        Thread.sleep(1000);
+        for (int i = 0; i < 5; i++) {
+            redisLimiterManager.doRateLimit(userId);
+            System.out.println("成功");
         }
     }
 }
