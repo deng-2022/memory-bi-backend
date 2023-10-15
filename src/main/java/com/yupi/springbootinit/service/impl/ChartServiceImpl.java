@@ -96,9 +96,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         // 2.1.校验图表名信息
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
         // 2.2.校验分析目标
-        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标为空");
         // 2.2.校验图表类型
-        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "目标为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "分析图表类型为空");
 
         // 3.分析Excel图表，获取原始数据
         // 3.1.校验文件
