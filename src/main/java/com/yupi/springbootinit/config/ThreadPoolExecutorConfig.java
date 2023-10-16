@@ -34,5 +34,4 @@ public class ThreadPoolExecutorConfig {
                         TimeUnit.MINUTES, new ArrayBlockingQueue<>(4), threadFactory);
         return threadPoolExecutor;
     }
-
 }

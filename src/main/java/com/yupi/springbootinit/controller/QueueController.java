@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.yupi.springbootinit.service.ChartService;
 import io.netty.util.concurrent.CompleteFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -17,6 +18,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 @RestController
 @RequestMapping("/queue")
 @Slf4j
+@Profile({ "dev", "local" })
 public class QueueController {
     @Resource
     private ThreadPoolExecutor threadPoolExecutor;

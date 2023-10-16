@@ -4,14 +4,16 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import java.io.Serializable;
 import java.util.Date;
 
 /**
  * 图表信息表
+ *
  * @TableName chart
  */
-@TableName(value ="chart")
+@TableName(value = "chart")
 public class Chart implements Serializable {
     /**
      * id
@@ -68,6 +70,16 @@ public class Chart implements Serializable {
      * 是否删除
      */
     private Integer isDelete;
+
+    /**
+     * 执行状态(wait, running, succeed, failed)
+     */
+    private String status;
+
+    /**
+     * 执行信息
+     */
+    private String execMessage;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
@@ -224,5 +236,33 @@ public class Chart implements Serializable {
      */
     public void setIsDelete(Integer isDelete) {
         this.isDelete = isDelete;
+    }
+
+    /**
+     * wait,running,succeed,failed
+     */
+    public String getStatus() {
+        return status;
+    }
+
+    /**
+     * wait,running,succeed,failed
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    /**
+     * 执行信息
+     */
+    public String getExecMessage() {
+        return execMessage;
+    }
+
+    /**
+     * 执行信息
+     */
+    public void setExecMessage(String execMessage) {
+        this.execMessage = execMessage;
     }
 }

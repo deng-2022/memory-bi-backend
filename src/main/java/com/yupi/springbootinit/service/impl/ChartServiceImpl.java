@@ -2,6 +2,7 @@ package com.yupi.springbootinit.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.springbootinit.common.BiResponse;
@@ -18,6 +19,7 @@ import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.service.UserService;
 import com.yupi.springbootinit.utils.ExcelUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +28,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.yupi.springbootinit.constant.FileConstant.ONE_MB;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX_LIST;
@@ -36,6 +40,7 @@ import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX_LI
  * @createDate 2023-10-06 21:49:43
  */
 @Service
+@Slf4j
 public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         implements ChartService {
     @Resource
@@ -46,6 +51,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
 
     @Resource
     private RedisLimiterManager redisLimiterManager;
+
+    @Resource
+    private ThreadPoolExecutor threadPoolExecutor;
 
     /**
      * 图表列表
@@ -73,7 +81,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     }
 
     /**
-     * 智能分析
+     * 智能分析(同步)
      *
      * @param genChartByAiRequest 智能分析参数
      * @param request             request
@@ -145,6 +153,114 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         biResponse.setUserId(loginUser.getId());
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);
+
+        return biResponse;
+    }
+
+    /**
+     * 智能分析(异步)
+     *
+     * @param genChartByAiRequest 智能分析参数
+     * @param request             request
+     * @return AI分析结果
+     */
+    @Override
+    public BiResponse genChartByAiAsync(GenChartByAiRequest genChartByAiRequest, MultipartFile multipartFile, HttpServletRequest request) {
+        // 1.请求图表信息(图表名, 生成目标, 图表类型)
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+        // 2.校验登录
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "请先登录后再尝试调用接口");
+
+        // 3.限流(限制用户的调用次数，以用户id为key，区分各个限流器)
+        redisLimiterManager.doRateLimit("genCharByAi_" + loginUser.getId());
+
+        // 4.提取图表名信息、分析需求(分析目标 图表类型)，做好参数校验
+        StringBuilder userInput = new StringBuilder();
+        // 4.1.校验图表名信息
+        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
+        // 4.2.校验分析目标
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标为空");
+        // 4.3.校验图表类型
+        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "分析图表类型为空");
+
+        // 5.分析Excel图表，获取原始数据
+        // 5.1.校验文件
+        // 5.1.1.校验文件大小
+        long size = multipartFile.getSize();
+        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+
+        // 5.1.2.校验文件后缀
+        String originalFilename = multipartFile.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(originalFilename);
+        ThrowUtils.throwIf(!VALID_FILE_SUFFIX_LIST.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
+
+        // 5.2.分析文件，获取csv数据
+        String excelToCsv = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append("\n")
+                .append("分析需求:").append("\n")
+                .append(goal).append(", ").append("请生成一张").append(chartType).append("\n")
+                .append("原始数据:").append("\n")
+                .append(excelToCsv);
+
+        // 6.处理任务前, 先插入图表信息到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setChartType(chartType);
+        chart.setChartData(excelToCsv);
+        chart.setUserId(loginUser.getId());
+        chart.setStatus("wait");
+        boolean save = save(chart);
+        ThrowUtils.throwIf(!save, ErrorCode.OPERATION_DATABASE_ERROR, "插入图表信息失败");
+
+        // 7.使用任务队列处理任务
+        // todo 建议处理任务队列满了之后, 抛出异常的情况
+        CompletableFuture.runAsync(() -> {
+            // 7.1.更新图表状态执行中(running)
+            Chart updateChart = new Chart();
+            updateChart.setId(chart.getId());
+            updateChart.setStatus("running");
+
+            boolean updateById = updateById(updateChart);
+            ThrowUtils.throwIf(!updateById, ErrorCode.OPERATION_DATABASE_ERROR, "更新图表执行中状态失败");
+
+            // 7.2.AI 执行, 智能生成图表
+            String result = aiManager.doChat(AiConstant.BI_MODEL_ID, userInput.toString());
+
+            // 7.3.校验图表生成失败情况
+            // todo 校验图表生成失败情况
+            if (result == null) {
+                // 更新图表信息(图表生成失败)
+                Chart updateChartResult = new Chart();
+                updateChartResult.setId(chart.getId());
+                updateChartResult.setStatus("failed");
+
+                boolean updateResultById = updateById(updateChartResult);
+                ThrowUtils.throwIf(!updateResultById, ErrorCode.OPERATION_DATABASE_ERROR, "更新图表失败状态失败");
+            }
+
+            // 7.4.处理AI响应的对话信息
+            String[] split = result.split("【【【【【");
+            String genChart = split[1];
+            String genResult = split[2];
+
+            // 7.5.更新图表信息(图表成功状态、图表生成情况、图表分析结果)
+            Chart updateChartResult = new Chart();
+            updateChartResult.setId(chart.getId());
+            updateChartResult.setStatus("succeed");
+            updateChartResult.setGenChart(genChart);
+            updateChartResult.setGenResult(genResult);
+
+            boolean updateResultById = updateById(updateChartResult);
+            ThrowUtils.throwIf(!updateResultById, ErrorCode.OPERATION_DATABASE_ERROR, "更新图表成功状态失败");
+        }, threadPoolExecutor);
+
+        // 8.封装分析结果并返回
+        BiResponse biResponse = new BiResponse();
+        biResponse.setUserId(loginUser.getId());
 
         return biResponse;
     }

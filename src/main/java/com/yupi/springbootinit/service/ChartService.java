@@ -26,11 +26,20 @@ public interface ChartService extends IService<Chart> {
     Page<Chart> listChartByPage(ChartQueryRequest chartQueryRequest, HttpServletRequest request);
 
     /**
-     * 智能分析
+     * 智能分析 (同步)
      *
      * @param genChartByAiRequest 智能分析参数
      * @param request             request
      * @return AI分析结果
      */
     BiResponse genChartByAi(GenChartByAiRequest genChartByAiRequest, MultipartFile multipartFile, HttpServletRequest request);
+
+    /**
+     * 智能分析 (异步)
+     *
+     * @param genChartByAiRequest 智能分析参数
+     * @param request             request
+     * @return AI分析结果
+     */
+    BiResponse genChartByAiAsync(GenChartByAiRequest genChartByAiRequest, MultipartFile multipartFile, HttpServletRequest request);
 }
